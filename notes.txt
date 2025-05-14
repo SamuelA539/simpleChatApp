@@ -1,0 +1,66 @@
+server (welcome/set up page?)
+    Comps
+        client thread: 
+            recvs messages - sends to method in serv admin thread to display || chat ui
+            other client specific detials ??
+
+        listening/accepting thread: 
+            listens for connections reports to serv admin numClis
+            accepts connections - checks if can accept  --> starts client threads
+            
+        serv admin (main)thread? - serv ui (displays connections, takes input)
+            *serv admin thread control all info passed to for displaying
+
+    +)early quit out of listening (timed loop while waiting?)
+
+    listening menu cmds?: 
+        stoplistening(close port)
+        closeconnection
+        msgcli
+        msgallclis
+        read chat
+        shutdown server
+        see clients list
+
+    methods 
+        onRecv: server log & relay message to targets
+        onSend: prefix with server message
+
+client
+    1) connect to socket
+    2) send msgs + menu
+    methods 
+        onRecv: display element ?exec comands?
+        onSend: send msg +id?
+
+!!!Break files Better!!!
+
+serv only accept when cli queued up
+
+chatServ accept fork comment 
+
+    //exit option (whole program) (causes fork to overtake main thread)
+    // printf("Enter q to exit or any to continue\t");
+    // c = '\0'; //blank dummy var
+    // scanf(" %c" , &c);
+    // if (c == 'q' || c == 'Q') {
+    //     exit(0);
+    // }
+
+Issues
+    1) server must be started & blocked from accept before client runs 
+        fix: 
+            server menu where listening procedure can be manualy started
+            client connect options (maybe run general app and takes in port (+ optional comand line args))
+    
+    2) resterting server while client is running --> client sends message and quits(no text)
+    
+    3) client error when message to big (+ broken into peices by whitespace)
+
+    4) cli handle serv quit
+
+
+
+Notes
+    client can run and send message before server accepts for printing
+    client message get broken and sent in sequentail packets
