@@ -11,68 +11,59 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+
+#include "chatServer.h"
+
+
 #define BACKLOG 10
 #define MAXCONNECTIONS 5
 
 
-
-void* get_in_addr(struct sockaddr *addr);
-int getbindedsock(char *port); //binds to given sock address
-
-
-//make return status nums
-
-//threads
-int servlisten(void *arg);
-int handlecli(void *arg);
-
-void handleclimsg(int clisock);
-void sendallclis(char *msg);
-
-
 //global vars
-int connections[MAXCONNECTIONS];
-char *clientnames[MAXCONNECTIONS];
-int *currCon = connections;
+int connections[MAXCONNECTIONS]; //cli fds
+char *clientnames[MAXCONNECTIONS]; //cli IPs
+
+//point at?
+int *currCon = connections; //last connected cli??
 
 char *servport = "8080"; //listening port
 
 
 //+cli args & ui
-int main(void)  //cmd line args: port num
+int main(int argc, char *argv[])  //cmd line args: port maxNumClients
 {   
+    if (argc == 1) {
+        char *servport = argv[0]; //listening port.
+        //check port nums
+    } else {
+        printf("usage: ./chatserv port maxNumClients"); //port maxNumClients
+    } 
     int sockfd;
 
     //welcome & serv start conditions(port, set num clients)
-    printf("--- welcome to Sam's simple chat app[server] ---\n\n"); //set port & #clients
+    printf("--- welcome to Sam's simple chat app[server] ---\n\n"); //set port & #clients.
 
-    //if no cmd line args
-    // printf("please enter port to run server on\n");
-    // printf("please enter max number of clients to serve\n\n");
-
+    //turn On option?
 
     if ((sockfd  = getbindedsock(servport)) == -1) {
         fprintf(stderr, "server failed to bind\n");
-        return 2;
+        return 1;
     }
 
-    if (listen(sockfd, BACKLOG) == -1) {
+    if (listen(sockfd, BACKLOG) == -1) { //proper error msg?
         perror("server: listen");
         return 1;
     }
 
-
-    //thread
+//lisetning thread
     thrd_t listengthread;
     thrd_create(&listengthread, servlisten, &sockfd);
 
-    //listening
+    
+//serv UI
     printf("enter h for help\n");
     int running = 1;
-    // char *str;
     char c;
-
-//serv ui loop
     while(running) { 
 
         scanf(" %c", &c);
@@ -85,23 +76,23 @@ int main(void)  //cmd line args: port num
                 //nested input
                 break;
             case('q'):
-                printf("quiting program\n");
+                printf("quiting program\n");               
                 
-                //send EOF
-                char quitmsg[1] = {EOF};
+                char quitmsg[2] = {EOF, '\0'};
                 sendallclis(quitmsg);
-                
+
                 return 0;
+
             default:
                 printf("input: %c not recognized\n", c);
                 break;
         }
     }
 
+    close(sockfd);    
     int res;
     thrd_join(listengthread, &res);
 
-    printf("program done(main thrd)\n");
     return 0;   
 }
 
@@ -154,7 +145,7 @@ void* get_in_addr(struct sockaddr *addr)
     return &(((struct sockaddr_in6*)addr)->sin6_addr);
 }
 
-
+// --- THREADS MAINS  --- 
 
 //listening thread main
 int servlisten(void *arg)
@@ -172,9 +163,9 @@ int servlisten(void *arg)
 
     //listening loop
     while(listening) { 
-        if (currCon <= connections+MAXCONNECTIONS) { //only if enough spaces for connections
 
-            //accepting connection
+        if (currCon <= connections+MAXCONNECTIONS) {
+
             if ((clientfd = accept(*port, (struct sockaddr*)&clientaddrs, &clientaddrsize)) == -1) {
                 perror("server: accept");
                 // return -1; do something else
@@ -195,11 +186,12 @@ int servlisten(void *arg)
 
                 currCon++;
             }
-        } else printf("Too many clients connected please manage\n");
+        } else {
+            printf("Too many clients connected please manage\n");
+            break; //stops accepting ?when client leaves?
+        }
     }
 
-    //join threads
-    close(*port);
     return 0;
 }
 
@@ -227,13 +219,15 @@ int handlecli(void *arg)
         if (recbuf[0] == EOF) { //end connection char
             running = 0;
             close(*client);
+            //currCon--; // race cond?
         } else {
             int res, *cur = connections;
             
             //echo to clis
+                //alt: 
             while(cur < currCon) {
                 if (*cur == *client) { //sending client
-                    printf("messageing messenger\n");
+                    printf("messaging messenger\n");
                     if ((res = send(*cur, recbuf, bytesrec, 0)) == -1) {
                         perror("server: send");
                     }                  
@@ -245,7 +239,6 @@ int handlecli(void *arg)
                 }
                 cur++;
             }
-
            //emmpty reset recv buf
           
         }
@@ -256,29 +249,6 @@ int handlecli(void *arg)
     return 1;
 }
 
-
-
-//???
-void handleclimsg(int clisock) 
-{
-    int bytesrec, maxSz = 256;
-    char recbuf[maxSz];
-
-    if ((bytesrec = recv(clisock, recbuf, maxSz-1, 0)) == -1) {
-        perror("server: recv");
-        //error exit
-    }
-    
-    //print test
-    printf("\nrecived: %s\t[bytes: %d, client: ]\n", recbuf, bytesrec); //not needed for server
-
-    if (recbuf[0] == EOF) {
-        //cli disconect msg
-
-    } else {
-        //echo to clis
-    }
-}
 
 void sendallclis(char *msg) 
 {
@@ -293,4 +263,10 @@ void sendallclis(char *msg)
 
         cur++;
     }
+}
+
+//method for server shutdown process
+int closeServer() 
+{
+
 }

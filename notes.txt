@@ -29,23 +29,10 @@ server (welcome/set up page?)
 client
     1) connect to socket
     2) send msgs + menu
+
     methods 
         onRecv: display element ?exec comands?
         onSend: send msg +id?
-
-!!!Break files Better!!!
-
-serv only accept when cli queued up
-
-chatServ accept fork comment 
-
-    //exit option (whole program) (causes fork to overtake main thread)
-    // printf("Enter q to exit or any to continue\t");
-    // c = '\0'; //blank dummy var
-    // scanf(" %c" , &c);
-    // if (c == 'q' || c == 'Q') {
-    //     exit(0);
-    // }
 
 Issues
     1) server must be started & blocked from accept before client runs 
@@ -57,10 +44,9 @@ Issues
     
     3) client error when message to big (+ broken into peices by whitespace)
 
-    4) cli handle serv quit
-
+    +) serv only accept when cli queued up
 
 
 Notes
     client can run and send message before server accepts for printing
-    client message get broken and sent in sequentail packets
+    client message get broken by whitespace

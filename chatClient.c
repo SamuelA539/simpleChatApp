@@ -11,6 +11,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include "chatClient.h"
+
 #define MAXDATASIZE 256
 void chat(int sock);
 
@@ -22,39 +24,6 @@ void *get_in_addr(struct sockaddr *sa)
 
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
-
-int connectToSocket(struct addrinfo *adds) 
-{
-    struct addrinfo *p;
-    char addrStr[INET6_ADDRSTRLEN];
-    int sock;
-
-    for (p = adds; p != NULL; p=p->ai_next) {
-        int sock;
-
-        if ((sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-            perror("socket");
-            continue;
-        }
-
-        if (connect(sock, p->ai_addr, p->ai_addrlen ) == -1) {
-            perror("connect");
-            continue;
-        }
-
-        inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-        addrStr, sizeof addrStr);
-        printf("client: connecting to %s\n", addrStr);
-
-        return sock;
-    }
-
-    perror("client failed to connect");
-    return -1;
-}
-
-//handleServer
-int recive(void *arg);
 
 
 //optional input args (serv IP(4 vs 6))
@@ -69,7 +38,7 @@ int main(void)
     char* hostname = "127.0.0.1";
     char* portnum = "8080";
 
-    if ((val = getaddrinfo(hostname, portnum, &hints, &results)) != 0) {
+    if ((val = getaddrinfo(hostname, portnum, &hints, &results)) != 0) { //error handling
         fprintf(stderr, "addrinfo error: %s\n", gai_strerror(val));
         return 1;
     }
@@ -138,11 +107,11 @@ int main(void)
             }
         }
 
-        //thread join
+        //thread joining 
         int res;
         thrd_join(recvthrd, &res);
 
-    } else {
+    } else { //handle error 
         //perror("client: connectSocket");
         fprintf(stderr, "client failed to connect\n");
         return 2;
@@ -151,6 +120,37 @@ int main(void)
     close(sockfd);
 
     return 0;
+}
+
+
+int connectToSocket(struct addrinfo *adds) 
+{
+    struct addrinfo *p;
+    char addrStr[INET6_ADDRSTRLEN];
+    int sock;
+
+    for (p = adds; p != NULL; p=p->ai_next) {
+        int sock;
+
+        if ((sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("client: socket");
+            continue;
+        }
+
+        if (connect(sock, p->ai_addr, p->ai_addrlen ) == -1) {
+            perror("client: connect");
+            continue;
+        }
+
+        inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+        addrStr, sizeof addrStr);
+        printf("client: connecting to %s\n", addrStr);
+
+        return sock;
+    }
+
+    perror("client failed to connect");
+    return -1;
 }
 
 //thread to recv & display
@@ -165,7 +165,7 @@ int recive(void *arg)
     while (running)
     {
         //handleclimsg(*client);   //recv messages 
-        if ((bytesrec = recv(*sock, recbuf, maxSz-1, 0)) == -1) {
+        if ((bytesrec = recv(*sock, recbuf, maxSz-1, 0)) == -1) {  //handle error
             perror("server: recv");
             //error exit
         }
@@ -173,7 +173,7 @@ int recive(void *arg)
         if(recbuf[0] == EOF) {
             printf("server diconected\n");
             running = 0;
-        } else {
+        } else {  //handle error
             //print test
             printf(">recived: %s\t[bytes: %d]\n", recbuf, bytesrec);
         }
