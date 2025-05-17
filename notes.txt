@@ -1,52 +1,31 @@
-server (welcome/set up page?)
-    Comps
-        client thread: 
-            recvs messages - sends to method in serv admin thread to display || chat ui
-            other client specific detials ??
-
-        listening/accepting thread: 
-            listens for connections reports to serv admin numClis
-            accepts connections - checks if can accept  --> starts client threads
-            
-        serv admin (main)thread? - serv ui (displays connections, takes input)
-            *serv admin thread control all info passed to for displaying
-
+server 
+    +)welcome/set up page?
     +)early quit out of listening (timed loop while waiting?)
 
     listening menu cmds?: 
         stoplistening(close port)
         closeconnection
-        msgcli
-        msgallclis
-        read chat
-        shutdown server
+        msging(cli & all)
+        read chat (store chat as file and print)
         see clients list
-
-    methods 
-        onRecv: server log & relay message to targets
-        onSend: prefix with server message
 
 client
     1) connect to socket
     2) send msgs + menu
-
-    methods 
-        onRecv: display element ?exec comands?
-        onSend: send msg +id?
 
 Issues
     1) server must be started & blocked from accept before client runs 
         fix: 
             server menu where listening procedure can be manualy started
             client connect options (maybe run general app and takes in port (+ optional comand line args))
-    
-    2) resterting server while client is running --> client sends message and quits(no text)
-    
-    3) client error when message to big (+ broken into peices by whitespace)
 
-    +) serv only accept when cli queued up
+    2)client error when message to big (+ broken into peices by whitespace)
 
 
 Notes
     client can run and send message before server accepts for printing
     client message get broken by whitespace
+
+
+Serv: joining client and emptying connections list
+cleint & serv: handling server exit

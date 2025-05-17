@@ -13,7 +13,7 @@
 
 #include "chatClient.h"
 
-#define MAXDATASIZE 256
+#define MAXDATASIZE 257 //256 chars + '\0'
 void chat(int sock);
 
 void *get_in_addr(struct sockaddr *sa)
@@ -64,7 +64,7 @@ int main(void)
         while(running) {
             //menu: chat, close connection, change
             printf("Enter message to send: [quit -q, help -h]\n");
-            scanf(" %s", msg);
+            scanf("%s", msg);
 
             switch(msg[0])
             {
@@ -76,6 +76,7 @@ int main(void)
                             printf("quiting program\n");
                             msg[0] = EOF;
                             if (send(sockfd, msg,  strlen(msg), 0) == -1) perror("client: send");
+                            return 0;
                             break;
 
                         case 'h':
@@ -96,12 +97,12 @@ int main(void)
                     }
                     break;
 
+                //needed?
                 case ' ':
                     printf("please enter mesage or -q to quit\n");
                     break;
 
-                default:
-                    //default behavior
+                default: //add end char to msg
                     if (send(sockfd, msg,  strlen(msg), 0) == -1) perror("client: send");
                     break;
             }
