@@ -24,114 +24,113 @@ void *get_in_addr(struct sockaddr *sa)
 
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
-
+int sockfd;
+char* hostname = "127.0.0.1";
+char* portnum = "8080";
 
 //optional input args (serv IP(4 vs 6))
-int main(void)
+int main(int argc, int* argv[])
 {
-    int val;
-    struct addrinfo hints, *results;
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    
-    char* hostname = "127.0.0.1";
-    char* portnum = "8080";
-
-    if ((val = getaddrinfo(hostname, portnum, &hints, &results)) != 0) { //error handling
-        fprintf(stderr, "addrinfo error: %s\n", gai_strerror(val));
+    if (argc == 2) {    //ip w/ default port?
+        hostname = argv[1];
+    }else if (argc == 3) {  //ip (v6 vs v4)  & port
+        hostname = argv[1];
+        portnum = argv[2];
+    } else if (argc > 3 ){
+        printf("usage: chatcli ip port || chatcli port ");
         return 1;
     }
 
-    int sockfd;
-    sockfd = connectToSocket(results);
-    freeaddrinfo(results);
 
-    
 
-    if (sockfd != -1) {         
-        printf("---Connecting---\n\n");
-
-        //recv thread
-        thrd_t recvthrd;
-        thrd_create(&recvthrd, recive, &sockfd);
-
-        //msging servr
-        char msg[1024];
-        int running = 1;
-        
-        //ui/sending thread
-        while(running) {
-            //menu: chat, close connection, change
-            printf("Enter message to send: [quit -q, help -h]\n");
-            scanf("%s", msg);
-
-            switch(msg[0])
-            {
-                case '-':
-                    switch(msg[1])
-                    {
-                        case 'q':
-                            running = 0;
-                            printf("quiting program\n");
-                            msg[0] = EOF;
-                            if (send(sockfd, msg,  strlen(msg), 0) == -1) perror("client: send");
-                            return 0;
-                            break;
-
-                        case 'h':
-                            printf("---help page---\n");
-                            printf("action: comand\n");
-                            printf("quit: -q\n");
-                            printf("open chat: -c\n");
-                            break;
-                        
-                        case 'c':
-                            //full chat send and recive 
-                            chat(sockfd);
-                            break;
-                        
-                        default:
-                            printf("please enter valid flag\n");
-                            break;
-                    }
-                    break;
-
-                //needed?
-                case ' ':
-                    printf("please enter mesage or -q to quit\n");
-                    break;
-
-                default: //add end char to msg
-                    if (send(sockfd, msg,  strlen(msg), 0) == -1) perror("client: send");
-                    break;
-            }
-        }
-
-        //thread joining 
-        int res;
-        thrd_join(recvthrd, &res);
-
-    } else { //handle error 
-        //perror("client: connectSocket");
+    int val;
+    if ((val = connectToSocket(&sockfd)) != 0){
+        // perror("client: connectSocket");
         fprintf(stderr, "client failed to connect\n");
         return 2;
-    }  
+    }
 
+    printf("---Connecting---\n\n");
+        
+    //recv thread
+    thrd_t recvthrd;
+    thrd_create(&recvthrd, recive, &sockfd);
+
+    char msg[1024];
+    int running = 1; 
+//ui/sending thread
+    while(running) {
+        //menu: chat, close connection, change
+        printf("Enter message to send: [quit -q, help -h]\n");
+        scanf("%s", msg);
+
+        switch(msg[0])
+        {
+            case '-':
+                switch(msg[1])
+                {
+                    case 'q':
+                        running = 0;
+                        printf("quiting program\n");
+                        msg[0] = EOF;
+                        if (send(sockfd, msg,  strlen(msg), 0) == -1) perror("client: send");
+                        return 0;
+                        break;
+
+                    case 'h':
+                        printf("---help page---\n");
+                        printf("action: comand\n");
+                        printf("quit: -q\n");
+                        printf("open chat: -c\n");
+                        break;
+                    
+                    case 'c':
+                        //full chat send and recive 
+                        chat(sockfd);
+                        break;
+                    
+                    default:
+                        printf("please enter valid flag\n");
+                        break;
+                }
+                break;
+
+            //needed?
+            case ' ':
+                printf("please enter mesage or -q to quit\n");
+                break;
+
+            default: //add end char to msg
+                if (send(sockfd, msg,  strlen(msg), 0) == -1) perror("client: send");
+                break;
+        }
+    }
+
+//clean up
+    int res;
+    thrd_join(recvthrd, &res);
     close(sockfd);
-
     return 0;
 }
 
 
-int connectToSocket(struct addrinfo *adds) 
+int connectToSocket(int *clisock) 
 {
-    struct addrinfo *p;
+    int val, sock;
     char addrStr[INET6_ADDRSTRLEN];
-    int sock;
 
-    for (p = adds; p != NULL; p=p->ai_next) {
-        int sock;
+    struct addrinfo hints, *results, *p;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC; //works for ipv4 & v6
+    hints.ai_socktype = SOCK_STREAM;
+
+    if ((val = getaddrinfo(hostname, portnum, &hints, &results)) != 0) { //error handling
+        fprintf(stderr, "addrinfo error: %s\n", gai_strerror(val));
+        return -1;
+    }
+    
+
+    for (p = results; p != NULL; p=p->ai_next) {
 
         if ((sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             perror("client: socket");
@@ -143,14 +142,15 @@ int connectToSocket(struct addrinfo *adds)
             continue;
         }
 
-        inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-        addrStr, sizeof addrStr);
+        inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), addrStr, sizeof addrStr);
         printf("client: connecting to %s\n", addrStr);
 
-        return sock;
+        freeaddrinfo(results);
+        *clisock = sock;
+        return 0;
     }
 
-    perror("client failed to connect");
+    freeaddrinfo(results);
     return -1;
 }
 
@@ -192,9 +192,8 @@ void chat(int sock)
     printf("-q to quit\n");
 
     //loop
-        //fork?
-            //thread reciving from serv and printing
-            //thread scans ip and send o serv(should apper in chat)
+        //thread reciving from serv and printing
+        //thread scans ip and send o serv(should apper in chat)
     
     char recvbuf[1024];
     char msg[256];

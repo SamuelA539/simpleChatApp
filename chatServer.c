@@ -31,17 +31,17 @@ char *servport = "8080"; //listening port
 
 
 //+cli args & ui
-int main(int argc, char *argv[])  //cmd line args: port maxNumClients
+int main(int argc, char *argv[])  //cmd line args: port, maxNumClients ?backlog
 {   
-
-    //1 arg c give defualt port
+    // cmd line arg for port
     if (argc == 2) {
-        int portInt = atoi(argv[0]);
-        
-        //check port nums
-        if (1023 < portInt && portInt < 49152 ) servport = argv[0];
+        int portInt = atoi(argv[1]);
+
+        //printf("1:%s , 2:%s\n", argv[0], argv[1]);
+
+        if (1023 < portInt && portInt < 49152 ) servport = argv[1];
         else {
-            printf("Invalid Port:\tplease enter port number in rnage [1024, 49151]\n"); 
+            printf("%d is an Invalid Port:\tplease enter port number in ranage [1024, 49151]\n", portInt); 
             return 1;
         }
     } else if (argc > 2) {
@@ -51,15 +51,13 @@ int main(int argc, char *argv[])  //cmd line args: port maxNumClients
     
     //welcome & serv start conditions(port, set num clients)
     printf("--- Welcome to Sam's Simple Chat App[server] ---\n"); //set port & #clients.
-    printf("Using port: %s\n\n", servport);
-
-    //turn On option?   
+    printf("Using port: %s\n\n", servport);  
     mtx_init(&currCon_mtx, mtx_plain);
-
-        
-//lisetning thread
+       
     int sockfd;
     thrd_t listengthread;
+
+//starting listen thread (automatic)
     if (startListening(&listengthread, &sockfd) != 0) {
         fprintf(stderr, "Error Starging listening thread");
         return 1;
@@ -102,8 +100,7 @@ int main(int argc, char *argv[])  //cmd line args: port maxNumClients
         }
     }
 
-
-
+    //clean up
     int res;
     thrd_join(listengthread, &res);
     mtx_destroy(&currCon_mtx);
@@ -115,7 +112,15 @@ int main(int argc, char *argv[])  //cmd line args: port maxNumClients
 
 // --- General Functions --- 
 
-//needed?
+void* get_in_addr(struct sockaddr *addr) 
+{
+    if (addr->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)addr)->sin_addr); 
+    }
+    return &(((struct sockaddr_in6*)addr)->sin6_addr);
+}
+
+//TODO: error handling msgs
 int getbindedsock(char *port) 
 {
     int val, sockfd;
@@ -133,13 +138,12 @@ int getbindedsock(char *port)
 
     for (p=servsocks; p!=NULL; p=p->ai_next) {
         int sock;
-        //socket
+
         if ((sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             perror("server: socket");
             continue;
         }
 
-        //bind
         if (bind(sock, p->ai_addr, p->ai_addrlen) == -1) {
             perror("server: bind");
             continue;
@@ -149,13 +153,12 @@ int getbindedsock(char *port)
         return sock;
     }
 
-    //p check needed?
     freeaddrinfo(servsocks);
     return -1;
 }
 
-//0 = no error
-int startListening(thrd_t *listeningthrd, int *sockfd)
+//TODO error handling msgs
+int startListening(thrd_t *listeningthrd, int *sockfd) //0 on success
 {
         
     if ((*sockfd  = getbindedsock(servport)) == -1) {
@@ -173,15 +176,7 @@ int startListening(thrd_t *listeningthrd, int *sockfd)
     return 0;
 }
 
-
-void* get_in_addr(struct sockaddr *addr) 
-{
-    if (addr->sa_family == AF_INET) {
-        return &(((struct sockaddr_in*)addr)->sin_addr); 
-    }
-    return &(((struct sockaddr_in6*)addr)->sin6_addr);
-}
-
+//TODO error handling msgs
 void sendallclis(char *msg) 
 {
     int res, *cur = connections;
@@ -197,9 +192,6 @@ void sendallclis(char *msg)
 }
 
 
-
-
-
 //Test connection end strings
 void closeServer() 
 {
@@ -207,12 +199,10 @@ void closeServer()
     sendallclis(quitmsg);
 }
 
-
+//send msg?
 
 
 // --- THREAD  MAINS  --- 
-
-
 
 //listening thread main
 int servlisten(void *arg)
@@ -231,20 +221,19 @@ int servlisten(void *arg)
     //listening loop
     while(listening) {
 
-        mtx_lock(&currCon_mtx);     printf("Listening THRD: mtx locked(if)\n");
+        mtx_lock(&currCon_mtx);     //printf("Listening THRD: mtx locked(if)\n");
         if (currCon <= connections+MAXCONNECTIONS) {
-            mtx_unlock(&currCon_mtx);      printf("Listening THRD: mtx unlocked(if)\n");
+            mtx_unlock(&currCon_mtx);      //printf("Listening THRD: mtx unlocked(if)\n");
 
-            if ((clientfd = accept(*port, (struct sockaddr*)&clientaddrs, &clientaddrsize)) == -1) { //TODO test more  
+
+            if ((clientfd = accept(*port, (struct sockaddr*)&clientaddrs, &clientaddrsize)) == -1) { //Error handle
                 perror("server: accept");
                 //return -1; //ends thread?
             } else {
-                mtx_lock(&currCon_mtx);     printf("Listening THRD: mtx locked\n");
-                
-                *currCon = clientfd; //placing fd in cli-list
+                mtx_lock(&currCon_mtx);     //printf("Listening THRD: mtx locked\n");  
+                *currCon = clientfd;
                 currCon++;
-
-                mtx_unlock(&currCon_mtx);   printf("Listening THRD: mtx unlocked(currCon++)\n");
+                mtx_unlock(&currCon_mtx);   //printf("Listening THRD: mtx unlocked(currCon++)\n");
 
                 //printing connection info
                 inet_ntop(clientaddrs.ss_family, 
@@ -257,7 +246,7 @@ int servlisten(void *arg)
                 thrd_create(&clithrd, handlecli, &clientfd);
                 thrd_detach(clithrd);                
             }
-        } else { 
+        } else {  
             printf("Too many clients connected please manage\n");
             break; //stops listening loop ?when a client leaves?
         }
@@ -267,7 +256,7 @@ int servlisten(void *arg)
 }
 
 //client thread main
-    //TODO: possible to manage clients directly?
+    //TODO: possible to manage clients directly array of threads
 int handlecli(void *arg) 
 {
     int running = 1;
@@ -287,23 +276,17 @@ int handlecli(void *arg)
         
         printf("\nrecived: %s\t[bytes: %d, client: ]\n", recbuf, bytesrec);
 
-
-        mtx_lock(&currCon_mtx);     printf("Client THRD: mtx locked\n");
+        mtx_lock(&currCon_mtx);     //printf("Client THRD: mtx locked\n");
     
         if (recbuf[0] == EOF) { //end connection msg
             running = 0;
-            close(*client);
             currCon--; // race cond?
         } else sendallclis(recbuf);
 
-        mtx_unlock(&currCon_mtx);   printf("Client THRD: mtx unlocked\n");
-
+        mtx_unlock(&currCon_mtx);   //printf("Client THRD: mtx unlocked\n");
     }
 
     close(*client);
+    printf("client disconnected");
     return 1;
 }
-
-
-
-

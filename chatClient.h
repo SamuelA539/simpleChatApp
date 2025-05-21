@@ -1,6 +1,7 @@
 void *get_in_addr(struct sockaddr *sa);
 
-int connectToSocket(struct addrinfo *adds);
+//0 on success
+int connectToSocket(int *clisock) ;
 
 int recive(void *arg);
 
