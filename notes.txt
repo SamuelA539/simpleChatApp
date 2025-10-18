@@ -1,31 +1,72 @@
-server 
-    +)welcome/set up page?
-    +)early quit out of listening (timed loop while waiting?)
+TODO
+   client list wrong - on client exit does note reduce
+   clients name error - pointer error
+   clients send message at same time  -> server stops reciving from a cli
+   server dosent recive messages
 
-    listening menu cmds?: 
-        stoplistening(close port)
-        closeconnection
-        msging(cli & all)
-        read chat (store chat as file and print)
-        see clients list
-
-client
-    1) connect to socket
-    2) send msgs + menu
-
-Issues
-    1) server must be started & blocked from accept before client runs 
-        fix: 
-            server menu where listening procedure can be manualy started
-            client connect options (maybe run general app and takes in port (+ optional comand line args))
-
-    2)client error when message to big (+ broken into peices by whitespace)
+   connection established protocol 
+      client must recive connection accepted messsage to start chat
+   
 
 
-Notes
-    client can run and send message before server accepts for printing
-    client message get broken by whitespace
+
+tests
+   
+   disconnect tests:
+      - client starts disconnect
+         2+ clis 
+            ?server stops chat for others(not always - first client left first) - not really cuz server listeing thread keeps going 
+
+      - server starts disconnect
+         clients must enter message to leave msg input 
+            => recving thrd kill -> chat exit  
+         1 cli
+            client gets poll error event[fd not open]
+            + server shutsdown well no haning threads
+         2+ clis 
+            shits fucked up
+            
+   ? numClients = number of recivng client or sending clients (linked?)
+      should number change on poll event errs? 
+
+   general chating
+      - 2+ clis 
+         server missing messages [only recives from (first cient to chat || last client to disconnect)]
+            => check reciving thrd (?polling error?)
+         client each word seperate message!
+            => scan words but only read till (return || string end?)
 
 
-Serv: joining client and emptying connections list
-cleint & serv: handling server exit
+TODO:  
+
+   server stops listening to first cli
+
+   clients can connect to server before server user start
+
+   app improvments
+      -disconnect procedure 
+         one side handles closing
+         cli request -> server *server process* server conformation -> cli
+      
+      -server monitor multiple clients recive w/ single thread
+      
+      -server handle client disconnect
+         !currently: stops server when client discconets
+         edit array
+         stop listening to client's fd
+         return controll to server user
+
+   
+
+
+cool new features
+ - make inputs optional
+      input trigger to see inputs otherwise continous printing
+ - save chat history
+ - client setting username
+    first message sends username
+ - server methods
+   client specific actions[message, disconnect, rename?, mute]
+ - ServerClientLib improvemnts
+    disconnect procdure handling
+    client username setting
